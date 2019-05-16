@@ -1,13 +1,12 @@
-//#include "pch.h"
-
 #include "Fish.h"
+
+Fish::Fish() {}
 
 Fish::Fish(const sf::Vector2f& pos, FishType type) {
     pos_ = pos;
     type_ = type;
     scale_ = type_scale[type];
     LoadSprite();
-
 }
 
 void Fish::LoadSprite() {
@@ -29,7 +28,9 @@ void Fish::LoadSprite() {
             if (!tex_.loadFromFile(L4_file))
                 exit(-1);
             break;
-            //for boosting shrimp
+
+            //=========boosts============
+
         case FishType::SHRIMP:
             if (!tex_.loadFromFile(shrimp_file))
                 exit(-1);
@@ -38,15 +39,17 @@ void Fish::LoadSprite() {
             if (!tex_.loadFromFile(oyster_file))
                 exit(-1);
             break;
+        case FishType::COIN:
+            if (!tex_.loadFromFile(coin_file))
+                exit(-1);
+            break;
     }
 }
-
 
 
 sf::Sprite Fish::GetSprite() const {
     return fish_;
 }
-
 
 sf::Vector2f Fish::GetPosition() const {
     return pos_;
@@ -55,6 +58,61 @@ sf::Vector2f Fish::GetPosition() const {
 FishType Fish::GetType() const {
     return type_;
 }
+
+float Fish::GetSpeed() const {
+    return speed_;
+}
+
+float Fish::GetAngle() const {
+    return angle_;
+}
+
+
+sf::FloatRect ControlledFish::FishMouth() const {					//counts current coordinates of what should be fish mouth
+    sf::FloatRect mouth = fish_.getGlobalBounds();
+
+    //std::cout << "Before" << mouth.left << ":" << mouth.top << std::endl;
+
+    switch (type_)
+    {
+        case FishType::L_1:
+            mouth.top += 0.5f * fish_.getTexture()->getSize().y * scale_.y *(1.f + sin(angle_ - 180.f));
+            mouth.height *= 0.3f;
+            break;
+        case FishType::L_2:
+            mouth.top += 0.5f * fish_.getTexture()->getSize().y * scale_.y * (1.f + sin(angle_ - 180.f));
+            mouth.height *= 0.25f;
+            break;
+        case FishType::L_3:
+            mouth.top += 0.6f * fish_.getTexture()->getSize().y * scale_.y *(1.f + 0.5f * sin(angle_ - 180.f));
+            mouth.height *= 0.2f;
+            break;
+        case FishType::L_4:
+            mouth.top += 0.8f * fish_.getTexture()->getSize().y * scale_.y * (1 + 0.2f * sin(angle_ - 180.f));
+            mouth.height *= 0.1f;
+            break;
+
+        default:
+            break;
+    }
+
+    mouth.left += 0.4f * fish_.getTexture()->getSize().x * scale_.x * (1.f + cos(angle_ - 180.f));
+    mouth.width *= 0.2f;
+
+    //std::cout << "After" << mouth.left << ":" << mouth.top << std::endl;
+
+    return mouth;
+}
+
+sf::FloatRect AutomaticFish::DangerZone() const {		//fish is eaten only "face to face"
+    sf::FloatRect body = fish_.getGlobalBounds();
+    body.top += 0.2f * fish_.getTexture()->getSize().y * scale_.y;
+    body.height *= 0.6f;
+    body.left -= 0.1 * fish_.getTexture()->getSize().x * scale_.x;
+    body.width *= 0.8f;
+    return body;
+}
+
 
 AutomaticFish::AutomaticFish(const sf::Vector2f& pos, FishType type, const float& time) :
         Fish(pos, type), time_created_(time) {
@@ -66,7 +124,7 @@ AutomaticFish::AutomaticFish(const sf::Vector2f& pos, FishType type, const float
 //return true if fish is outside window
 bool AutomaticFish::Draw(const float &time, sf::RenderWindow& window) {
     pos_.x -= speed_.x * (time - time_created_);
-    //óñëîæíèòü òðàåêòîðèþ!
+    //усложнить траекторию!
     speed_.y = sin(5 * time) / ((5 + rand() % 5) + (10 + rand() % 10) * (time - time_created_));
     pos_.y += speed_.y * (time - time_created_);
     fish_.setTexture(tex_);
@@ -74,32 +132,46 @@ bool AutomaticFish::Draw(const float &time, sf::RenderWindow& window) {
     fish_.scale(1.0f, -1.0f);
     fish_.setPosition(pos_.x, pos_.y);
     window.draw(fish_);
+
     return (pos_.x < 0);
 }
 
+AnotherPlayerFish::AnotherPlayerFish() {}
+
+AnotherPlayerFish::AnotherPlayerFish(const sf::Vector2f& pos, FishType type, float angle,
+        DirectionType directionType, float speed)  : Fish(pos, type) {
+    angle_ = angle;
+    current_direction = directionType;
+    speed_ = speed;
+
+}
+void AnotherPlayerFish::Draw(sf::RenderWindow& window) {
+    fish_.setTexture(tex_);
+    fish_.setScale(scale_);
+    fish_.scale(1.0f, -1.0f);
+    fish_.setPosition(pos_.x, pos_.y);
+    fish_.setRotation(angle_);
+    if (((angle_ >= 0) && (angle_ < 90)) || ((angle_ > 270) && (angle_ < 360)))
+        fish_.scale(1.0f, -1.0f);
+    window.draw(fish_);
+}
+
+DirectionType AnotherPlayerFish::GetDirectionType()  const{
+    return current_direction;
+}
+
 //additionally setting size of font used to display points added
-ControlledFish::ControlledFish(const sf::Vector2f& pos, FishType type) : Fish(pos, type), add_points_(20) {
+ControlledFish::ControlledFish(const sf::Vector2f& pos, FishType type) : Fish(pos, type), add_points_(20),
+                                                                         bar_(sf::Color::Green), boost_bar_(sf::Color::Red) {
     LoadSounds();
 }
-
-void ControlledFish::LoadSounds() {
-    if (!collect_point_sound_.loadFromFile("collect_point.wav"))
-        exit(-1);
-}
-
-void ControlledFish::PlaySound(sf::SoundBuffer buffer) {
-    sf::Sound sound;
-    sound.setBuffer(buffer);
-    sound.play();
-}
-
 
 
 bool ControlledFish::CheckSharpRotate(DirectionType newDirectionType) {
     return (((previous_direction == DirectionType::UP) && (newDirectionType == DirectionType::DOWN)) ||
-     ((previous_direction == DirectionType::DOWN) && (newDirectionType == DirectionType::UP)) ||
-     ((previous_direction == DirectionType::LEFT) && (newDirectionType == DirectionType::RIGHT)) ||
-     ((previous_direction == DirectionType::RIGHT) && (newDirectionType == DirectionType::LEFT)));
+            ((previous_direction == DirectionType::DOWN) && (newDirectionType == DirectionType::UP)) ||
+            ((previous_direction == DirectionType::LEFT) && (newDirectionType == DirectionType::RIGHT)) ||
+            ((previous_direction == DirectionType::RIGHT) && (newDirectionType == DirectionType::LEFT)));
 }
 
 void ControlledFish::GradualRotate(DirectionType newDirectionType) {
@@ -110,11 +182,11 @@ void ControlledFish::GradualRotate(DirectionType newDirectionType) {
         if (((angle_ >= 0) && (angle_ < 90)) && (end_angle == 270))
             angle_ = angle_ + 360 - 1;
         else
-            if ((((angle_ < 360) && (angle_ > 270))) && (end_angle == 270))
-                angle_ -= 1;
-            else
-                if ((((angle_ < 360) && (angle_ >= 270))) && (end_angle == 0))
-                angle_ += 1;
+        if ((((angle_ < 360) && (angle_ > 270))) && (end_angle == 270))
+            angle_ -= 1;
+        else
+        if ((((angle_ < 360) && (angle_ >= 270))) && (end_angle == 0))
+            angle_ += 1;
         else {
             d_angle = (sign > 0) ? 1 : -1;
             angle_ += d_angle;
@@ -123,6 +195,7 @@ void ControlledFish::GradualRotate(DirectionType newDirectionType) {
 }
 
 void ControlledFish::Rotate(DirectionType newDirectionType) {
+    current_direction = newDirectionType;
     if (CheckSharpRotate(newDirectionType)) {
         angle_ = directionType_angle[newDirectionType];
     }
@@ -154,7 +227,7 @@ void ControlledFish::Move(sf::Vector2u& TextureSize, Background& background, con
         if (TextureSize.x < pos_.x + 500) {
             std::cout << "Background added" << std::endl;
             background.AddBackground();
-            TextureSize = background.GetBackgroundTextureSize();		//äîáàâëÿåò î÷åðåäíîé êóñîê ôîíà
+            TextureSize = background.GetBackgroundTextureSize();
         }
 
     }
@@ -191,7 +264,6 @@ void ControlledFish::Control(sf::Vector2u& textureSize, sf::RenderWindow& window
     sf::Vector2f center = fish_.getPosition();
     sf::Vector2f d = sf::Vector2f(worldPos.x, worldPos.y) - center;
 
-    //ñþäà äîáàâëÿþ ïåðåäà÷ó ôîíà, ÷òîáû âîâðåìÿ åãî ïðîäëåâàòü
     Move(textureSize, background, time);
     Laser(window, center, worldPos);
 }
@@ -204,13 +276,16 @@ void ControlledFish::Eat(std::vector<AutomaticFish>& autoFish,
     delta_pts_ = type_points[(*it_del).GetType()];
 
     points_ += delta_pts_;
-    plus_pts_string = "+ " + to_str(delta_pts_);
+    plus_pts_string = "+ " + to_str(delta_pts_);		//init'ing the string only once each time
+
+    Resize();
 
     std::cout << "current points = " << points_ << std::endl;
 
-    time_fish_eaten_ = time;
+    time_text_effect_ = time;		//for plus points animation
 
-    autoFish.erase(it_del);//seems OK
+    autoFish.erase(it_del);		//seems OK
+
     PlaySound(collect_point_sound_);
 
     if (points_ >= type_limit_points[type_])
@@ -231,7 +306,6 @@ void ControlledFish::ChangeType() {
 
 
 //return true if you died
-//template<typename T>
 bool ControlledFish::DetectFish(std::vector<AutomaticFish>& autoFish, const float& time) {
     //it is here for now, need to find another place (probably)
     CheckBoost(time);
@@ -245,11 +319,6 @@ bool ControlledFish::DetectFish(std::vector<AutomaticFish>& autoFish, const floa
 
     while (it != autoFish.end()) {
         if (isTouched(*it)) {
-            /*if ((*it).GetType() == FishType::SHRIMP) {
-                to_eat = it;
-                poedanie = true;
-                break;
-            }*/
             if (type_ >= (*it).GetType()) {
                 to_eat = it;
                 poedanie = true;
@@ -265,22 +334,11 @@ bool ControlledFish::DetectFish(std::vector<AutomaticFish>& autoFish, const floa
     if (poedanie) {
         Eat(autoFish, to_eat, time);
     }
-    /*for (AutomaticFish& fish : autoFish) {
-        if (isTouched(fish)) {
-            if (type_ >= fish.GetType()) {
-                Eat(autoFish, it);
-            }
-            else {
-                imDied = true;
-                break;
-            }
-        }
-        //it++;
-    }*/
+
     return imDied;
 }
 
-void ControlledFish::Draw(sf::RenderWindow &window, const float& time) {
+void ControlledFish::Draw(sf::RenderWindow& window, const float& time) {
     fish_.setTexture(tex_);
     fish_.setScale(scale_);
     fish_.setPosition(pos_.x, pos_.y);
@@ -289,15 +347,79 @@ void ControlledFish::Draw(sf::RenderWindow &window, const float& time) {
         fish_.scale(1.0f, -1.0f);
     window.draw(fish_);
 
-    if (time - time_fish_eaten_ < 0.75f)
+
+    //drawing progress bar until the next level
+    if (type_ != FishType::L_4) {
+        if (type_ == FishType::L_1)
+            bar_.Draw(window, points_, type_limit_points[type_], 80);
+        else {
+            int prev_type = static_cast<int> (type_) - 1;
+            bar_.Draw(window, points_ - type_limit_points[static_cast<FishType> (prev_type)],
+                      type_limit_points[type_] - type_limit_points[static_cast<FishType> (prev_type)], 80);
+        }
+    }
+
+    //drawing a bar indicating how much boost is left
+    if (is_boost_applied) {
+        boost_bar_.Draw(window, 1.f - (time - time_boost_applied), 1.f, 130);
+    }
+
+    if (time - time_text_effect_ < 0.75f)
         PointsAnimation(window, time);
 }
+
+
+void ControlledFish::SpeedBoost(const float& time, const float& factor) {
+    if (!is_boost_applied) {		//если до этого нет ни одного буста (ускорителя)
+        speed_ = speed_ * factor;
+        time_boost_applied = time;
+        is_boost_applied = true;
+        boost_factor = factor;
+    }
+    else {
+        if (boost_factor == factor) {		//если то же самое ускорение - просто продлеваем время
+            //1.f каждый раз делает эффект длиннее (что-то вроде комбо)
+            time_boost_applied += 1.0f;
+        }
+        else {							//если ускорение другое - создаем их комбо, которое длится полное время
+            //возможно, стоит подумать над этой логикой
+            boost_factor = boost_factor * factor;
+            time_boost_applied = time;
+        }
+    }
+
+    //std::cout << "Boost by: " << boost_factor << std::endl;		//test purposes
+
+    time_text_effect_ = time;
+    plus_pts_string = "boost x" + to_str(boost_factor);		//init'ing the string only once each time
+}
+
+void ControlledFish::CheckBoost(const float& time) {		//убирает буст по истечении времени его применения
+    if ((time - time_boost_applied > 1.f) && is_boost_applied) {
+        time_boost_applied = 0;
+        is_boost_applied = false;
+        speed_ = 500.f;
+        //std::cout << "END " << std::endl;
+    }
+}
+
+void ControlledFish::CoinBoost(const int& points_added, const float& time) {
+    delta_pts_ = points_added;
+    points_ += delta_pts_;
+    plus_pts_string = "+ " + to_str(delta_pts_);		//init'ing the string only once each time
+
+    time_text_effect_ = time;		//for plus points animation
+
+    if (points_ >= type_limit_points[type_])
+        ChangeType();
+}
+
 
 
 void ControlledFish::PointsAnimation(sf::RenderWindow& window, const double& time) {
     sf::Vector2f delta_pts_pos;
     delta_pts_pos.x = pos_.x;
-    delta_pts_pos.y = pos_.y - tex_.getSize().y * scale_.y / 2 - 75 * (time - time_fish_eaten_);	//going up effect
+    delta_pts_pos.y = pos_.y - tex_.getSize().y * scale_.y / 2 - 75 * (time - time_text_effect_);	//going up effect
 
     add_points_.Display(window, delta_pts_pos, plus_pts_string);
 }
@@ -307,14 +429,36 @@ int ControlledFish::GetScore() {
     return points_;
 }
 
+DirectionType ControlledFish::GetDirectionType()  const{
+    return current_direction;
+}
+
+//fish grows gradually
+void ControlledFish::Resize() {
+    if (type_ != FishType::L_4) {
+        scale_.x += (0.002f * delta_pts_);
+        scale_.y += (0.002f * delta_pts_);
+    }
+}
 
 
+void ControlledFish::LoadSounds() {
+    if (!collect_point_sound_.loadFromFile("collect_point.wav"))
+        exit(-1);
+}
+
+void ControlledFish::PlaySound(sf::SoundBuffer buffer) {
+    sf::Sound sound;
+    sound.setBuffer(buffer);
+    //sound.setVolume(20);
+    sound.play();
+}
 
 
 FishGeneration::FishGeneration() {}
 
 FishType FishGeneration::GenerateType() {
-    //÷òîáû áûëî ðàñïðåäåëåíèå "÷åì âûøå ðûáà ïî óðîâíþ, òåì ðåæå ïîÿâëÿåòñÿ"
+    //чтобы было распределение "чем выше рыба по уровню, тем реже появляется"
     int genType = rand() % 100;
     FishType type;
     if (genType < 40)
@@ -325,9 +469,6 @@ FishType FishGeneration::GenerateType() {
         type = FishType::L_3;
     if (genType >= 90 && genType < 100)
         type = FishType::L_4;
-
-    if (genType > 100)
-        type = FishType::SHRIMP;
 
     return type;
 }
@@ -343,8 +484,8 @@ void FishGeneration::Draw(const float &time, sf::RenderWindow& window) {
 }
 */
 
-//ñþäà òåïåðü ïåðåäàåì ñàìîãî ïåðñà, ÷òîáû íà ðàññòîÿíèè îò íåãî ãåíåðèëèñü ðûáû
-//à íå íà êîíöå îêíà(èíà÷å áåäà)
+//сюда теперь передаем самого перса, чтобы на расстоянии от него генерились рыбы
+//а не на конце окна(иначе беда)
 
 void FishGeneration::GenerateFish(const float &time, const sf::Vector2f& current_fish) {
     if (time > last_creation_time) {
