@@ -76,6 +76,7 @@ public:
     FishType GenerateType();
     void GenerateFish(const float &time, const float& max_pos_x, std::vector<sf::TcpSocket*>& clients);
     void SendFishGeneration(std::vector<sf::TcpSocket*>& clients, AutomaticFish);
+    void DeleteFish(int ind);
     //void Draw(const float &time, sf::RenderWindow& window);
     //std::vector<AutomaticFish> autoFish;
     std::vector<AutomaticFish> autoCreature;

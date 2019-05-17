@@ -72,3 +72,8 @@ void FishGeneration::GenerateFish(const float &time, const float& max_pos_x, std
         last_creation_time += dt;
     }
 }
+
+void FishGeneration::DeleteFish(int ind) {
+
+    autoCreature.erase(autoCreature.begin() + ind);
+}

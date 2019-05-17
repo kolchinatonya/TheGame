@@ -33,7 +33,7 @@ void WaitClients(std::vector<sf::TcpSocket*>& clients) {
 
 
 
-void GetSendControlledFish(std::vector<sf::TcpSocket*>& clients) {
+void GetSendControlledFish(std::vector<sf::TcpSocket*>& clients, FishGeneration& gen) {
     vector<sf::Packet> packets = vector<sf::Packet>(2);
     for (int i = 0; i < 2; ++i) {
         sf::Vector2f pos;
@@ -52,6 +52,13 @@ void GetSendControlledFish(std::vector<sf::TcpSocket*>& clients) {
                 (*clients[!i]).send(packet);
             }
         }
+        if (packet_type == 3)
+        {
+            int ind;
+            packet >> ind;
+            gen.DeleteFish(ind);
+            (*clients[!i]).send(packet);
+        }
     }
 }
 
@@ -68,8 +75,8 @@ int main() {
     sf::Clock clock;
     while (ok) {
         sf::Time time = clock.getElapsedTime();
-        //gen.GenerateFish(time.asSeconds(), max(pos_x[0], pos_x[1]), clients);			//??
-        GetSendControlledFish(clients);
+        gen.GenerateFish(time.asSeconds(), max(pos_x[0], pos_x[1]), clients);			//??
+        GetSendControlledFish(clients, gen);
     }
 
 
