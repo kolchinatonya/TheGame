@@ -32,7 +32,6 @@ void WaitClients(std::vector<sf::TcpSocket*>& clients) {
 }
 
 
-
 void GetSendControlledFish(std::vector<sf::TcpSocket*>& clients, FishGeneration& gen) {
     vector<sf::Packet> packets = vector<sf::Packet>(2);
     for (int i = 0; i < 2; ++i) {
