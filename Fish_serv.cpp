@@ -65,7 +65,6 @@ void FishGeneration::GenerateFish(const float &time, const float& max_pos_x, std
         float y = 100 + rand() % 400;			//?????
 
         FishType type = GenerateType();
-
         autoCreature.push_back(AutomaticFish({ x, y }, type, time));
         SendFishGeneration(clients, AutomaticFish({ x, y }, type, time));
         float dt = rand() % 3;
