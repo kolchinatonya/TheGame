@@ -57,28 +57,19 @@ void Network::GetAnotherFish(AnotherPlayerFish& anotherFish) {
     sf::Packet packet;
     sf::Vector2f pos;
     int type;
-    float angle;
-    int directionType;
-    float speed;
     if (socket.receive(packet) == sf::Socket::NotReady) {
         return;
     }
-    if (packet >> pos.x >> pos.y >> type >> angle >> directionType >> speed) {
-        anotherFish = AnotherPlayerFish(pos, static_cast<FishType> (type), angle, static_cast<DirectionType>(directionType), speed);
+    if (packet >> pos.x >> pos.y >> type) {
+        anotherFish = AnotherPlayerFish(pos, static_cast<FishType> (type));
         //testing
         std::cout << "anotherFish recieved! " << std::endl;
-//        std::cout << anotherFish.GetPosition().x << " " << anotherFish.GetPosition().y << " "
-//                  << static_cast<int> (anotherFish.GetType()) << " "
-//                  << anotherFish.GetAngle() << " "
-//                  << static_cast<int> (anotherFish.GetDirectionType()) << " "
-//                  << anotherFish.GetSpeed() << " "
-//                  << std::endl;
+        std::cout << "Position" << anotherFish.GetPosition().x << ":" << anotherFish.GetPosition().y << "\nLevel: " << static_cast<int> (anotherFish.GetType()) <<std::endl;
     }
 }
 
 void Network::SendMyFish(const ControlledFish& myFish) {
     sf::Packet packet;
-    packet << myFish.GetPosition().x << myFish.GetPosition().y << static_cast<int> (myFish.GetType())
-    << myFish.GetAngle() << static_cast<int> (myFish.GetDirectionType()) << myFish.GetSpeed();
+    packet << myFish.GetPosition().x << myFish.GetPosition().y << static_cast<int> (myFish.GetType());
     socket.send(packet);
 }

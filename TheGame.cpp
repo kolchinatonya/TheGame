@@ -189,29 +189,27 @@ void DrawEverything(Background& background, ControlledFish& fish, FishGeneration
     //рисуем рыб
     fish.Draw(window, time);
 
-    boost.Generate(time, fish);		//applying boost to the fish is inside of this function
-    boost.Draw(time, window);
+   // boost.Generate(time, fish);		//applying boost to the fish is inside of this function
+    //boost.Draw(time, window);
 
 
-    gen.GenerateFish(time, fish.GetPosition());			//сюда передаем фон, чтобы с его обновлением рисовалось корректно
-    gen.Draw(time, window);
+    //gen.GenerateFish(time, fish.GetPosition());			//сюда передаем фон, чтобы с его обновлением рисовалось корректно
+   // gen.Draw(time, window);
 }
 
 bool GameStart(sf::RenderWindow& window, Network& net) {		//returns true if restart, false if exit.
-
-
-
-    bool multiplayer_mode = false;
-
-    //now choosing number of players (1/2) is inside of menu
-    ShowMenu(window, net, true, multiplayer_mode, 0);		//go to menu.cpp
-    //true means that menu for game beginning is displayed
 
     sf::Music music;
     music.openFromFile("hard_fish.wav");
     music.setVolume(10);
     music.setLoop(true);
     music.play();
+
+    bool multiplayer_mode = false;
+
+    //now choosing number of players (1/2) is inside of menu
+    ShowMenu(window, net, true, multiplayer_mode, 0);		//go to menu.cpp
+    //true means that menu for game beginning is displayed
 
     sf::Clock clock;
     Background background(window, 1);			//parameter one is for in-game background image
@@ -229,7 +227,7 @@ bool GameStart(sf::RenderWindow& window, Network& net) {		//returns true if rest
 
     ControlledFish fish({ 100, 100 }, FishType::L_1);		//starting from this
 
-    AnotherPlayerFish anotherFish({ 100, 100 }, FishType::L_1, 180.f, DirectionType::RIGHT, 550.f);
+    AnotherPlayerFish anotherFish({ 100, 100 }, FishType::L_1);
 
     FishGeneration gen;				//fishes to eat
     BoostGeneration boost;			//creatures that give you boosts
@@ -306,7 +304,6 @@ bool GameStart(sf::RenderWindow& window, Network& net) {		//returns true if rest
             sound.play();
             sf::sleep(sf::milliseconds(1000));
             std::cout << "YOU ARE DEAD!" << std::endl;
-            music.stop();
             return ShowMenu(window, net, false, multiplayer_mode, fish.GetScore());			//returns true if restart
         }
 
